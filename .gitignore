@@ -1,0 +1,47 @@
+# Logs & Internal Plans
+LOGPULSE_MASTER_PLAN.md
+*.log
+logs/
+
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Build Outputs
+.next/
+out/
+build/
+dist/
+
+# Environment Variables & Secrets
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# OS & IDE
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Python / ML artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+.venv/
+models/*.joblib
+models/*.pkl
+
+# Data / Datasets
+data/raw/
+data/processed/
+*.csv.gz
+*.tar.gz
