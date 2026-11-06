@@ -1,0 +1,101 @@
+services:
+  # ---------------------------------------------------------------------------
+  # Hot Storage: PostgreSQL 16 (Time-Partitioned & GIN Indexing)
+  # ---------------------------------------------------------------------------
+  postgres:
+    image: postgres:16-alpine
+    container_name: logpulse-postgres
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-logpulse_admin}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-logpulse_secure_password}
+      POSTGRES_DB: ${POSTGRES_DB:-logpulse}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-logpulse_admin} -d ${POSTGRES_DB:-logpulse}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - logpulse-net
+
+  # ---------------------------------------------------------------------------
+  # In-Memory Stream Buffer: Redis 7 (AOF Persistence & PEL Support)
+  # ---------------------------------------------------------------------------
+  redis:
+    image: redis:7-alpine
+    container_name: logpulse-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    command: ["redis-server", "/usr/local/etc/redis/redis.conf"]
+    volumes:
+      - redis_data:/data
+      - ./redis/redis.conf:/usr/local/etc/redis/redis.conf:ro
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - logpulse-net
+
+  # ---------------------------------------------------------------------------
+  # Cold Storage: MinIO (Local S3-Compatible Object Store)
+  # ---------------------------------------------------------------------------
+  minio:
+    image: minio/minio:latest
+    container_name: logpulse-minio
+    restart: unless-stopped
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+    command: server /data --console-address ":9001"
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "mc ready local || exit 0"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - logpulse-net
+
+  # ---------------------------------------------------------------------------
+  # MinIO Bucket Auto-Provisioner
+  # ---------------------------------------------------------------------------
+  minio-init:
+    image: minio/mc:latest
+    container_name: logpulse-minio-init
+    depends_on:
+      minio:
+        condition: service_started
+    entrypoint: >
+      /bin/sh -c "
+      until /usr/bin/mc alias set localminio http://minio:9000 $${MINIO_ROOT_USER:-minioadmin} $${MINIO_ROOT_PASSWORD:-minioadmin}; do
+        echo 'Waiting for MinIO endpoint to accept connections...';
+        sleep 2;
+      done;
+      /usr/bin/mc mb --ignore-existing localminio/$${MINIO_BUCKET_NAME:-logpulse-cold-archive};
+      echo 'MinIO bucket $${MINIO_BUCKET_NAME:-logpulse-cold-archive} initialized.';
+      exit 0;
+      "
+    networks:
+      - logpulse-net
+
+networks:
+  logpulse-net:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  redis_data:
+  minio_data:
+

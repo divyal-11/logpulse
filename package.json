@@ -1,0 +1,26 @@
+{
+  "name": "logpulse",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Universal Log Pre-processing, Stream Anomaly Detection & Autonomous Incident Triage Platform",
+  "packageManager": "pnpm@11.13.1",
+  "scripts": {
+    "docker:up": "docker compose up -d",
+    "docker:down": "docker compose down",
+    "docker:logs": "docker compose logs -f",
+    "build": "pnpm -r run build",
+    "dev:ingest": "pnpm --filter @logpulse/ingest-api dev",
+    "dev:workers": "pnpm --filter @logpulse/parser-workers dev",
+    "dev:web": "pnpm --filter @logpulse/web dev",
+    "lint": "pnpm -r run lint",
+    "typecheck": "pnpm -r run typecheck",
+    "clean": "pnpm -r exec rimraf dist .turbo"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "rimraf": "^6.0.1",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  }
+}
+
